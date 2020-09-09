@@ -1,0 +1,12 @@
+[package]
+authors = ["nelson kenzo tamashiro <nelsonkenzotamashiro@gmail.com>"]
+edition = "2018"
+name = "discontinuous_galerkin"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+float-cmp = "0.8.0"
+nalgebra = {version = "0.22"}
+num = "0.3.0"
