@@ -11,13 +11,16 @@ pub mod triangle {
     }
     pub mod system_builder {
         pub mod domain;
+        pub mod builder;
         pub mod internal {
             pub mod mass;
             pub mod flux_natural;
             pub mod flux_artificial;
+            pub mod jump_penalty;
         }
         pub mod external {
             pub mod dirichlet;
+            pub mod neumann;
             pub mod boundary_constraint;
         }
     }

@@ -60,9 +60,25 @@ impl Domain {
     pub fn insert_dirichlet_constraint(&mut self, edge: &Rc<Edge>, values: Vec<f64>) {
         let triangle = self.adjacency.get(edge).unwrap();
         let mut values_mapping: HashMap<Rc<Point>, f64> = HashMap::new();
+
         values_mapping.insert(Rc::clone(&edge.p1), *values.get(0).unwrap());
-        values_mapping.insert(Rc::clone(&edge.p2), *values.get(0).unwrap());
+        values_mapping.insert(Rc::clone(&edge.p2), *values.get(1).unwrap());
+
         self.dirichlet_constraints.push(Rc::new(BoundaryConstraint {
+            element: Rc::clone(triangle),
+            boundary_edge: Rc::clone(edge),
+            values: values_mapping,
+        }))
+    }
+
+    pub fn insert_neumann_constraint(&mut self, edge: &Rc<Edge>, values: Vec<f64>) {
+        let triangle = self.adjacency.get(edge).unwrap();
+        let mut values_mapping: HashMap<Rc<Point>, f64> = HashMap::new();
+
+        values_mapping.insert(Rc::clone(&edge.p1), *values.get(0).unwrap());
+        values_mapping.insert(Rc::clone(&edge.p2), *values.get(1).unwrap());
+
+        self.neumann_constraints.push(Rc::new(BoundaryConstraint {
             element: Rc::clone(triangle),
             boundary_edge: Rc::clone(edge),
             values: values_mapping,

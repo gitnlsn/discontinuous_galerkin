@@ -1,6 +1,9 @@
 use nalgebra::DMatrix;
 
-use crate::triangle::{integrands::dirichlet_constraint, system_builder::domain::Domain};
+use crate::triangle::{
+    integrands::{dirichlet_constraint, flux_natural, flux_artificial},
+    system_builder::domain::Domain,
+};
 
 use std::rc::Rc;
 
@@ -10,6 +13,7 @@ use std::rc::Rc;
 pub fn build(
     system_matrix: &mut DMatrix<f64>, /* NxN matrix */
     extern_matrix: &mut DMatrix<f64>, /* Nx1 matrix */
+    sigma: f64,
     domain: &Domain,
 ) -> Result<(), ()> {
     for d_constraint in domain.dirichlet_constraints.iter() {
@@ -43,7 +47,7 @@ pub fn build(
         let local_p3: usize = 2;
 
         /* Bilinear Penalty */
-        let penalty_bilinear = dirichlet_constraint::dirichlet_bilinear_penalty(&p1, &p2, &p3);
+        let penalty_bilinear = dirichlet_constraint::dirichlet_bilinear_penalty(&p1, &p2, &p3) * sigma;
         system_matrix[(global_p1, global_p1)] += penalty_bilinear[(local_p1, local_p1)];
         system_matrix[(global_p1, global_p2)] += penalty_bilinear[(local_p1, local_p2)];
         system_matrix[(global_p1, global_p3)] += penalty_bilinear[(local_p1, local_p3)];
@@ -56,6 +60,32 @@ pub fn build(
         system_matrix[(global_p3, global_p2)] += penalty_bilinear[(local_p3, local_p2)];
         system_matrix[(global_p3, global_p3)] += penalty_bilinear[(local_p3, local_p3)];
 
+        let natural_flux = flux_natural::flux(&p1, &p2);
+        system_matrix[(global_p1, global_p1)] -= natural_flux[(local_p1, local_p1)];
+        system_matrix[(global_p1, global_p2)] -= natural_flux[(local_p1, local_p2)];
+        system_matrix[(global_p1, global_p3)] -= natural_flux[(local_p1, local_p3)];
+
+        system_matrix[(global_p2, global_p1)] -= natural_flux[(local_p2, local_p1)];
+        system_matrix[(global_p2, global_p2)] -= natural_flux[(local_p2, local_p2)];
+        system_matrix[(global_p2, global_p3)] -= natural_flux[(local_p2, local_p3)];
+
+        system_matrix[(global_p3, global_p1)] -= natural_flux[(local_p3, local_p1)];
+        system_matrix[(global_p3, global_p2)] -= natural_flux[(local_p3, local_p2)];
+        system_matrix[(global_p3, global_p3)] -= natural_flux[(local_p3, local_p3)];
+
+        let artificial_flux = flux_artificial::flux(&p1, &p2, &p3);
+        system_matrix[(global_p1, global_p1)] += artificial_flux[(local_p1, local_p1)];
+        system_matrix[(global_p1, global_p2)] += artificial_flux[(local_p1, local_p2)];
+        system_matrix[(global_p1, global_p3)] += artificial_flux[(local_p1, local_p3)];
+
+        system_matrix[(global_p2, global_p1)] += artificial_flux[(local_p2, local_p1)];
+        system_matrix[(global_p2, global_p2)] += artificial_flux[(local_p2, local_p2)];
+        system_matrix[(global_p2, global_p3)] += artificial_flux[(local_p2, local_p3)];
+
+        system_matrix[(global_p3, global_p1)] += artificial_flux[(local_p3, local_p1)];
+        system_matrix[(global_p3, global_p2)] += artificial_flux[(local_p3, local_p2)];
+        system_matrix[(global_p3, global_p3)] += artificial_flux[(local_p3, local_p3)];
+
         /* Linear Natural  */
         let b1_matrix =
             dirichlet_constraint::dirichlet_linear_natural(&p1, &p2, &p3, *u1, *u2);
@@ -66,7 +96,7 @@ pub fn build(
 
         /* Linear Penalty */
         let penalty_linear =
-            dirichlet_constraint::dirichlet_linear_penalty(&p1, &p2, &p3, *u1, *u2);
+            dirichlet_constraint::dirichlet_linear_penalty(&p1, &p2, &p3, *u1, *u2) * sigma;
 
         extern_matrix[(global_p1, 0)] += penalty_linear[(local_p1, 0)];
         extern_matrix[(global_p2, 0)] += penalty_linear[(local_p2, 0)];
@@ -79,7 +109,7 @@ pub fn build(
 #[cfg(test)]
 mod dirichlet {
     use super::*;
-    use crate::common::{point::Point, edge::Edge};
+    use crate::common::{edge::Edge, point::Point};
     use crate::triangle::element::TriangleElementL1;
 
     #[test]
@@ -106,7 +136,7 @@ mod dirichlet {
         let mut system_matrix: DMatrix<f64> = DMatrix::<f64>::zeros(6, 6);
         let mut extern_matrix: DMatrix<f64> = DMatrix::<f64>::zeros(6, 1);
 
-        build(&mut system_matrix, &mut extern_matrix, &domain);
+        build(&mut system_matrix, &mut extern_matrix, 1.0, &domain);
 
         println!("{}", system_matrix);
         println!("{}", extern_matrix);

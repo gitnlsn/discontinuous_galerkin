@@ -11,9 +11,18 @@ pub fn build(system_matrix: &mut DMatrix<f64>, domain: &Domain) -> Result<(), ()
     for index in 0..domain.elements.len() {
         let element = Rc::clone(domain.elements.get(index).unwrap());
 
-        let gl_p1 = index * 3;
-        let gl_p2 = index * 3 + 1;
-        let gl_p3 = index * 3 + 2;
+        let gl_p1 = *domain
+            .index_mapping
+            .get(&(Rc::clone(&element), Rc::clone(&element.p1)))
+            .unwrap();
+        let gl_p2 = *domain
+            .index_mapping
+            .get(&(Rc::clone(&element), Rc::clone(&element.p2)))
+            .unwrap();
+        let gl_p3 = *domain
+            .index_mapping
+            .get(&(Rc::clone(&element), Rc::clone(&element.p3)))
+            .unwrap();
 
         let mass_matrix = mass::matrix(&element.p1, &element.p2, &element.p3);
 
@@ -33,7 +42,7 @@ pub fn build(system_matrix: &mut DMatrix<f64>, domain: &Domain) -> Result<(), ()
         system_matrix[(gl_p3, gl_p2)] += mass_matrix[(lo_p3, lo_p2)];
         system_matrix[(gl_p3, gl_p3)] += mass_matrix[(lo_p3, lo_p3)];
     }
-    return Err(());
+    return Ok(());
 }
 
 #[cfg(test)]

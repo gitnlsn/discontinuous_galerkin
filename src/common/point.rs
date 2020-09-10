@@ -3,6 +3,8 @@ use nalgebra::Matrix2x1;
 use num::Float;
 use std::hash::{Hash, Hasher};
 
+use std::fmt;
+
 pub struct Point {
     pub x: f64,
     pub y: f64,
@@ -15,6 +17,12 @@ impl Point {
 
     pub fn as_matrix(&self) -> Matrix2x1<f64> {
         Matrix2x1::new(self.x, self.y)
+    }
+}
+
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
     }
 }
 

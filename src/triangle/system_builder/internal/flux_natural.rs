@@ -10,14 +10,15 @@ use std::rc::Rc;
 pub fn build(system_matrix: &mut DMatrix<f64>, domain: &Domain) -> Result<(), ()> {
     let interfaces = domain.interfaces();
     for (e1, e2) in interfaces.iter() {
-        let flux_matrix = flux_natural::half_flux(&e1.p1, &e1.p2);
-        
         let t_left = Rc::clone(domain.adjacency.get(e1).unwrap());
         let t_right = Rc::clone(domain.adjacency.get(e2).unwrap());
-        
-        let e1_opposed = t_left.opposite_vertex(&e1).unwrap();
-        let e2_opposed = t_right.opposite_vertex(&e2).unwrap();
-        
+
+        let e1_opposed = t_left.opposite_vertex(e1).unwrap();
+        let e2_opposed = t_right.opposite_vertex(e2).unwrap();
+
+        let flux_matrix_left = flux_natural::half_flux(&e1.p1, &e1.p2);
+        let flux_matrix_right = flux_natural::half_flux(&e2.p1, &e2.p2);
+
         let left_p1 = *domain
             .index_mapping
             .get(&(Rc::clone(&t_left), Rc::clone(&e1.p1)))
@@ -49,58 +50,58 @@ pub fn build(system_matrix: &mut DMatrix<f64>, domain: &Domain) -> Result<(), ()
         let lo_p3: usize = 2;
 
         /* Populating system_matrix upper left */
-        system_matrix[(left_p1, left_p1)] -= flux_matrix[(lo_p1, lo_p1)];
-        system_matrix[(left_p1, left_p2)] -= flux_matrix[(lo_p1, lo_p2)];
-        system_matrix[(left_p1, left_p3)] -= flux_matrix[(lo_p1, lo_p3)];
+        system_matrix[(left_p1, left_p1)] -= flux_matrix_left[(lo_p1, lo_p1)];
+        system_matrix[(left_p1, left_p2)] -= flux_matrix_left[(lo_p1, lo_p2)];
+        system_matrix[(left_p1, left_p3)] -= flux_matrix_left[(lo_p1, lo_p3)];
 
-        system_matrix[(left_p2, left_p1)] -= flux_matrix[(lo_p2, lo_p1)];
-        system_matrix[(left_p2, left_p2)] -= flux_matrix[(lo_p2, lo_p2)];
-        system_matrix[(left_p2, left_p3)] -= flux_matrix[(lo_p2, lo_p3)];
+        system_matrix[(left_p2, left_p1)] -= flux_matrix_left[(lo_p2, lo_p1)];
+        system_matrix[(left_p2, left_p2)] -= flux_matrix_left[(lo_p2, lo_p2)];
+        system_matrix[(left_p2, left_p3)] -= flux_matrix_left[(lo_p2, lo_p3)];
 
-        system_matrix[(left_p3, left_p1)] -= flux_matrix[(lo_p3, lo_p1)];
-        system_matrix[(left_p3, left_p2)] -= flux_matrix[(lo_p3, lo_p2)];
-        system_matrix[(left_p3, left_p3)] -= flux_matrix[(lo_p3, lo_p3)];
+        system_matrix[(left_p3, left_p1)] -= flux_matrix_left[(lo_p3, lo_p1)];
+        system_matrix[(left_p3, left_p2)] -= flux_matrix_left[(lo_p3, lo_p2)];
+        system_matrix[(left_p3, left_p3)] -= flux_matrix_left[(lo_p3, lo_p3)];
 
         /* Populating system_matrix upper right */
-        system_matrix[(left_p1, right_p1)] -= flux_matrix[(lo_p1, lo_p1)];
-        system_matrix[(left_p1, right_p2)] -= flux_matrix[(lo_p1, lo_p2)];
-        system_matrix[(left_p1, right_p3)] -= flux_matrix[(lo_p1, lo_p3)];
+        system_matrix[(left_p1, right_p1)] -= flux_matrix_left[(lo_p1, lo_p1)];
+        system_matrix[(left_p1, right_p2)] -= flux_matrix_left[(lo_p1, lo_p2)];
+        system_matrix[(left_p1, right_p3)] -= flux_matrix_left[(lo_p1, lo_p3)];
 
-        system_matrix[(left_p2, right_p1)] -= flux_matrix[(lo_p2, lo_p1)];
-        system_matrix[(left_p2, right_p2)] -= flux_matrix[(lo_p2, lo_p2)];
-        system_matrix[(left_p2, right_p3)] -= flux_matrix[(lo_p2, lo_p3)];
+        system_matrix[(left_p2, right_p1)] -= flux_matrix_left[(lo_p2, lo_p1)];
+        system_matrix[(left_p2, right_p2)] -= flux_matrix_left[(lo_p2, lo_p2)];
+        system_matrix[(left_p2, right_p3)] -= flux_matrix_left[(lo_p2, lo_p3)];
 
-        system_matrix[(left_p3, right_p1)] -= flux_matrix[(lo_p3, lo_p1)];
-        system_matrix[(left_p3, right_p2)] -= flux_matrix[(lo_p3, lo_p2)];
-        system_matrix[(left_p3, right_p3)] -= flux_matrix[(lo_p3, lo_p3)];
+        system_matrix[(left_p3, right_p1)] -= flux_matrix_left[(lo_p3, lo_p1)];
+        system_matrix[(left_p3, right_p2)] -= flux_matrix_left[(lo_p3, lo_p2)];
+        system_matrix[(left_p3, right_p3)] -= flux_matrix_left[(lo_p3, lo_p3)];
 
         /* Populating system_matrix lower left */
-        system_matrix[(right_p1, left_p1)] += flux_matrix[(lo_p1, lo_p1)];
-        system_matrix[(right_p1, left_p2)] += flux_matrix[(lo_p1, lo_p2)];
-        system_matrix[(right_p1, left_p3)] += flux_matrix[(lo_p1, lo_p3)];
+        system_matrix[(right_p1, left_p1)] -= flux_matrix_right[(lo_p1, lo_p1)];
+        system_matrix[(right_p1, left_p2)] -= flux_matrix_right[(lo_p1, lo_p2)];
+        system_matrix[(right_p1, left_p3)] -= flux_matrix_right[(lo_p1, lo_p3)];
 
-        system_matrix[(right_p2, left_p1)] += flux_matrix[(lo_p2, lo_p1)];
-        system_matrix[(right_p2, left_p2)] += flux_matrix[(lo_p2, lo_p2)];
-        system_matrix[(right_p2, left_p3)] += flux_matrix[(lo_p2, lo_p3)];
+        system_matrix[(right_p2, left_p1)] -= flux_matrix_right[(lo_p2, lo_p1)];
+        system_matrix[(right_p2, left_p2)] -= flux_matrix_right[(lo_p2, lo_p2)];
+        system_matrix[(right_p2, left_p3)] -= flux_matrix_right[(lo_p2, lo_p3)];
 
-        system_matrix[(right_p3, left_p1)] += flux_matrix[(lo_p3, lo_p1)];
-        system_matrix[(right_p3, left_p2)] += flux_matrix[(lo_p3, lo_p2)];
-        system_matrix[(right_p3, left_p3)] += flux_matrix[(lo_p3, lo_p3)];
+        system_matrix[(right_p3, left_p1)] -= flux_matrix_right[(lo_p3, lo_p1)];
+        system_matrix[(right_p3, left_p2)] -= flux_matrix_right[(lo_p3, lo_p2)];
+        system_matrix[(right_p3, left_p3)] -= flux_matrix_right[(lo_p3, lo_p3)];
 
         /* Populating system_matrix lower right */
-        system_matrix[(right_p1, right_p1)] += flux_matrix[(lo_p1, lo_p1)];
-        system_matrix[(right_p1, right_p2)] += flux_matrix[(lo_p1, lo_p2)];
-        system_matrix[(right_p1, right_p3)] += flux_matrix[(lo_p1, lo_p3)];
+        system_matrix[(right_p1, right_p1)] -= flux_matrix_right[(lo_p1, lo_p1)];
+        system_matrix[(right_p1, right_p2)] -= flux_matrix_right[(lo_p1, lo_p2)];
+        system_matrix[(right_p1, right_p3)] -= flux_matrix_right[(lo_p1, lo_p3)];
 
-        system_matrix[(right_p2, right_p1)] += flux_matrix[(lo_p2, lo_p1)];
-        system_matrix[(right_p2, right_p2)] += flux_matrix[(lo_p2, lo_p2)];
-        system_matrix[(right_p2, right_p3)] += flux_matrix[(lo_p2, lo_p3)];
+        system_matrix[(right_p2, right_p1)] -= flux_matrix_right[(lo_p2, lo_p1)];
+        system_matrix[(right_p2, right_p2)] -= flux_matrix_right[(lo_p2, lo_p2)];
+        system_matrix[(right_p2, right_p3)] -= flux_matrix_right[(lo_p2, lo_p3)];
 
-        system_matrix[(right_p3, right_p1)] += flux_matrix[(lo_p3, lo_p1)];
-        system_matrix[(right_p3, right_p2)] += flux_matrix[(lo_p3, lo_p2)];
-        system_matrix[(right_p3, right_p3)] += flux_matrix[(lo_p3, lo_p3)];
+        system_matrix[(right_p3, right_p1)] -= flux_matrix_right[(lo_p3, lo_p1)];
+        system_matrix[(right_p3, right_p2)] -= flux_matrix_right[(lo_p3, lo_p2)];
+        system_matrix[(right_p3, right_p3)] -= flux_matrix_right[(lo_p3, lo_p3)];
     }
-    return Err(());
+    return Ok(());
 }
 
 #[cfg(test)]
@@ -128,6 +129,9 @@ mod build {
 
         build(&mut system_matrix, &domain);
 
+        // for ((t,p), index) in domain.index_mapping.iter() {
+        //     println!("{} {}: {}", t, p, index);
+        // }
         println!("{}", system_matrix);
     }
 

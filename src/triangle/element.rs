@@ -1,6 +1,7 @@
 use crate::common::edge::Edge;
 use crate::common::point::Point;
 
+use std::fmt;
 use std::rc::Rc;
 
 #[derive(Hash)]
@@ -14,6 +15,12 @@ pub struct TriangleElementL1 {
 impl PartialEq for TriangleElementL1 {
     fn eq(&self, other: &Self) -> bool {
         return self.p1 == other.p1 && self.p2 == other.p2 && self.p3 == other.p3;
+    }
+}
+
+impl fmt::Display for TriangleElementL1 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {} {}", self.p1, self.p2, self.p3)
     }
 }
 
@@ -47,5 +54,52 @@ impl TriangleElementL1 {
         let e2 = Rc::new(Edge::new(&self.p2, &self.p3));
         let e3 = Rc::new(Edge::new(&self.p3, &self.p1));
         return (e1, e2, e3);
+    }
+}
+
+#[cfg(test)]
+mod hash {
+    use super::*;
+
+    #[test]
+    fn sample_1() {
+        use std::collections::HashSet;
+        
+        let p1 = Rc::new(Point::new(0.0, 0.0));
+        let p2 = Rc::new(Point::new(1.0, 0.0));
+        let p3 = Rc::new(Point::new(0.0, 1.0));
+
+        let t1 = Rc::new(TriangleElementL1::new(&p1, &p2, &p3));
+        let t2 = Rc::new(TriangleElementL1::new(&p2, &p3, &p1));
+
+        let mut set: HashSet<Rc<TriangleElementL1>> = HashSet::new();
+
+        set.insert(Rc::clone(&t1));
+        set.insert(Rc::clone(&t2));
+        assert_eq!(set.len(), 2);
+        
+        set.insert(Rc::clone(&t1));
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn sample_2() {
+        use std::collections::HashSet;
+        
+        let p1 = Rc::new(Point::new(0.0, 0.0));
+        let p2 = Rc::new(Point::new(1.0, 0.0));
+        let p3 = Rc::new(Point::new(0.0, 1.0));
+
+        let t1 = Rc::new(TriangleElementL1::new(&p1, &p2, &p3));
+        let t2 = Rc::new(TriangleElementL1::new(&p2, &p3, &p1));
+
+        let mut set: HashSet<(Rc<TriangleElementL1>, Rc<Point>)> = HashSet::new();
+
+        set.insert((Rc::clone(&t1), Rc::clone(&p1)));
+        set.insert((Rc::clone(&t2), Rc::clone(&p1)));
+        assert_eq!(set.len(), 2);
+        
+        set.insert((Rc::clone(&t1), Rc::clone(&p1)));
+        assert_eq!(set.len(), 2);
     }
 }
