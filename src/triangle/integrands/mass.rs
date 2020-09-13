@@ -46,10 +46,10 @@ fn mass_ij(jaco: &Matrix2<f64>, i: usize, j: usize) -> f64 {
     let dj_dx = dphi_j[0];
     let dj_dy = dphi_j[1];
 
-    let j11 = jaco_inv[0]; /* 1,1 */
-    let j12 = jaco_inv[1]; /* 1,2 */
-    let j21 = jaco_inv[2]; /* 2,1 */
-    let j22 = jaco_inv[3]; /* 2,2 */
+    let j11 = jaco_inv[(0, 0)]; /* 1,1 */
+    let j12 = jaco_inv[(0, 1)]; /* 1,2 */
+    let j21 = jaco_inv[(1, 0)]; /* 2,1 */
+    let j22 = jaco_inv[(1, 1)]; /* 2,2 */
 
     let coef = j11 * j11 * di_dx * dj_dx
         + j11 * j12 * (di_dy * dj_dx + di_dx * dj_dy)

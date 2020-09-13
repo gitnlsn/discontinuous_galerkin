@@ -1,8 +1,8 @@
 use nalgebra::DMatrix;
 
 use crate::triangle::{
-    integrands::{dirichlet_constraint, flux_natural, flux_artificial},
-    system_builder::domain::Domain,
+    integrands::{dirichlet_constraint, flux_artificial, flux_natural},
+    system_builder::{assembler_utils, domain::Domain},
 };
 
 use std::rc::Rc;
@@ -20,125 +20,118 @@ pub fn build(
         let element = Rc::clone(&d_constraint.element);
         let inner_edge = Rc::clone(&d_constraint.boundary_edge);
 
-        let p1 = Rc::clone(&inner_edge.p1);
-        let p2 = Rc::clone(&inner_edge.p2);
-        let p3 = Rc::clone(&element.opposite_vertex(&inner_edge).unwrap());
-
-        let u1 = d_constraint.values.get(&p1).unwrap();
-        let u2 = d_constraint.values.get(&p2).unwrap();
+        let u1: f64 = match d_constraint.values.get(&element.p1) {
+            Some(value) => *value,
+            None => 0.0,
+        };
+        let u2: f64 = match d_constraint.values.get(&element.p2) {
+            Some(value) => *value,
+            None => 0.0,
+        };
+        let u3: f64 = match d_constraint.values.get(&element.p3) {
+            Some(value) => *value,
+            None => 0.0,
+        };
 
         let global_p1 = *domain
             .index_mapping
-            .get(&(Rc::clone(&element), Rc::clone(&p1)))
+            .get(&(Rc::clone(&element), Rc::clone(&element.p1)))
             .unwrap();
 
         let global_p2 = *domain
             .index_mapping
-            .get(&(Rc::clone(&element), Rc::clone(&p2)))
+            .get(&(Rc::clone(&element), Rc::clone(&element.p2)))
             .unwrap();
 
         let global_p3 = *domain
             .index_mapping
-            .get(&(Rc::clone(&element), Rc::clone(&p3)))
+            .get(&(Rc::clone(&element), Rc::clone(&element.p3)))
             .unwrap();
 
-        let local_p1: usize = 0;
-        let local_p2: usize = 1;
-        let local_p3: usize = 2;
+        /* Natural Flux */
+        assembler_utils::map(
+            system_matrix,
+            &flux_natural::half_flux(
+                &element.p1,
+                &element.p2,
+                &element.p3,
+                &element.p1,
+                &element.p2,
+                &element.p3,
+                element.edge_index(&inner_edge).unwrap(),
+            )
+            .slice((0, 0), (3, 3))
+            .clone_owned(),
+            &assembler_utils::square_map(global_p1, global_p2, global_p3),
+        );
+
+        /* Artificial flux */
+        assembler_utils::map(
+            system_matrix,
+            &(-flux_artificial::half_flux(
+                &element.p1,
+                &element.p2,
+                &element.p3,
+                &element.p1,
+                &element.p2,
+                &element.p3,
+                element.edge_index(&inner_edge).unwrap(),
+            ))
+            .slice((0, 0), (3, 3))
+            .clone_owned(),
+            &assembler_utils::square_map(global_p1, global_p2, global_p3),
+        );
 
         /* Bilinear Penalty */
-        let penalty_bilinear = dirichlet_constraint::dirichlet_bilinear_penalty(&p1, &p2, &p3) * sigma;
-        system_matrix[(global_p1, global_p1)] += penalty_bilinear[(local_p1, local_p1)];
-        system_matrix[(global_p1, global_p2)] += penalty_bilinear[(local_p1, local_p2)];
-        system_matrix[(global_p1, global_p3)] += penalty_bilinear[(local_p1, local_p3)];
+        assembler_utils::map(
+            system_matrix,
+            &(sigma
+                * dirichlet_constraint::dirichlet_bilinear_penalty(
+                    &element.p1,
+                    &element.p2,
+                    &element.p3,
+                    element.edge_index(&inner_edge).unwrap(),
+                ))
+            .slice((0, 0), (3, 3))
+            .clone_owned(),
+            &assembler_utils::square_map(global_p1, global_p2, global_p3),
+        );
 
-        system_matrix[(global_p2, global_p1)] += penalty_bilinear[(local_p2, local_p1)];
-        system_matrix[(global_p2, global_p2)] += penalty_bilinear[(local_p2, local_p2)];
-        system_matrix[(global_p2, global_p3)] += penalty_bilinear[(local_p2, local_p3)];
-
-        system_matrix[(global_p3, global_p1)] += penalty_bilinear[(local_p3, local_p1)];
-        system_matrix[(global_p3, global_p2)] += penalty_bilinear[(local_p3, local_p2)];
-        system_matrix[(global_p3, global_p3)] += penalty_bilinear[(local_p3, local_p3)];
-
-        let natural_flux = flux_natural::flux(&p1, &p2);
-        system_matrix[(global_p1, global_p1)] -= natural_flux[(local_p1, local_p1)];
-        system_matrix[(global_p1, global_p2)] -= natural_flux[(local_p1, local_p2)];
-        system_matrix[(global_p1, global_p3)] -= natural_flux[(local_p1, local_p3)];
-
-        system_matrix[(global_p2, global_p1)] -= natural_flux[(local_p2, local_p1)];
-        system_matrix[(global_p2, global_p2)] -= natural_flux[(local_p2, local_p2)];
-        system_matrix[(global_p2, global_p3)] -= natural_flux[(local_p2, local_p3)];
-
-        system_matrix[(global_p3, global_p1)] -= natural_flux[(local_p3, local_p1)];
-        system_matrix[(global_p3, global_p2)] -= natural_flux[(local_p3, local_p2)];
-        system_matrix[(global_p3, global_p3)] -= natural_flux[(local_p3, local_p3)];
-
-        let artificial_flux = flux_artificial::flux(&p1, &p2, &p3);
-        system_matrix[(global_p1, global_p1)] += artificial_flux[(local_p1, local_p1)];
-        system_matrix[(global_p1, global_p2)] += artificial_flux[(local_p1, local_p2)];
-        system_matrix[(global_p1, global_p3)] += artificial_flux[(local_p1, local_p3)];
-
-        system_matrix[(global_p2, global_p1)] += artificial_flux[(local_p2, local_p1)];
-        system_matrix[(global_p2, global_p2)] += artificial_flux[(local_p2, local_p2)];
-        system_matrix[(global_p2, global_p3)] += artificial_flux[(local_p2, local_p3)];
-
-        system_matrix[(global_p3, global_p1)] += artificial_flux[(local_p3, local_p1)];
-        system_matrix[(global_p3, global_p2)] += artificial_flux[(local_p3, local_p2)];
-        system_matrix[(global_p3, global_p3)] += artificial_flux[(local_p3, local_p3)];
-
-        /* Linear Natural  */
-        let b1_matrix =
-            dirichlet_constraint::dirichlet_linear_natural(&p1, &p2, &p3, *u1, *u2);
-
-        extern_matrix[(global_p1, 0)] += b1_matrix[(local_p1, 0)];
-        extern_matrix[(global_p2, 0)] += b1_matrix[(local_p2, 0)];
-        extern_matrix[(global_p3, 0)] += b1_matrix[(local_p3, 0)];
+        /* Linear Natural */
+        assembler_utils::map(
+            extern_matrix,
+            &dirichlet_constraint::dirichlet_linear_natural(
+                &element.p1,
+                &element.p2,
+                &element.p3,
+                u1,
+                u2,
+                u3,
+                element.edge_index(&inner_edge).unwrap(),
+            )
+            .slice((0, 0), (3, 1))
+            .clone_owned(),
+            &assembler_utils::linear_map(global_p1, global_p2, global_p3),
+        );
 
         /* Linear Penalty */
-        let penalty_linear =
-            dirichlet_constraint::dirichlet_linear_penalty(&p1, &p2, &p3, *u1, *u2) * sigma;
-
-        extern_matrix[(global_p1, 0)] += penalty_linear[(local_p1, 0)];
-        extern_matrix[(global_p2, 0)] += penalty_linear[(local_p2, 0)];
-        extern_matrix[(global_p3, 0)] += penalty_linear[(local_p3, 0)];
+        assembler_utils::map(
+            extern_matrix,
+            &(sigma
+                * dirichlet_constraint::dirichlet_linear_penalty(
+                    &element.p1,
+                    &element.p2,
+                    &element.p3,
+                    u1,
+                    u2,
+                    u3,
+                    element.edge_index(&inner_edge).unwrap(),
+                ))
+            .slice((0, 0), (3, 1))
+            .clone_owned(),
+            &assembler_utils::linear_map(global_p1, global_p2, global_p3),
+        );
     }
 
     return Ok(());
-}
-
-#[cfg(test)]
-mod dirichlet {
-    use super::*;
-    use crate::common::{edge::Edge, point::Point};
-    use crate::triangle::element::TriangleElementL1;
-
-    #[test]
-    fn sample_1() {
-        /* square into triangles */
-        let p1 = Rc::new(Point::new(0.0, 0.0));
-        let p2 = Rc::new(Point::new(1.0, 0.0));
-        let p3 = Rc::new(Point::new(1.0, 1.0));
-        let p4 = Rc::new(Point::new(0.0, 1.0));
-
-        let e1 = Rc::new(Edge::new(&p1, &p2));
-        let e2 = Rc::new(Edge::new(&p3, &p4));
-
-        let t1 = Rc::new(TriangleElementL1::new(&p1, &p2, &p4));
-        let t2 = Rc::new(TriangleElementL1::new(&p4, &p2, &p3));
-
-        let mut domain = Domain::new_empty();
-        domain.insert_element(&t1);
-        domain.insert_element(&t2);
-
-        domain.insert_dirichlet_constraint(&e1, vec![0.0, 0.0]);
-        domain.insert_dirichlet_constraint(&e2, vec![2.0, 2.0]);
-
-        let mut system_matrix: DMatrix<f64> = DMatrix::<f64>::zeros(6, 6);
-        let mut extern_matrix: DMatrix<f64> = DMatrix::<f64>::zeros(6, 1);
-
-        build(&mut system_matrix, &mut extern_matrix, 1.0, &domain);
-
-        println!("{}", system_matrix);
-        println!("{}", extern_matrix);
-    }
 }

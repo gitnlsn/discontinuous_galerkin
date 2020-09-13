@@ -109,11 +109,11 @@ mod build {
 
         build(&mut system_matrix, &domain);
 
-        assert_eq!(system_matrix[(0, 0)], 1.0);
-        assert_eq!(system_matrix[(0, 1)], -1.0);
+        assert_eq!(system_matrix[(0, 0)], 2.0);
+        assert_eq!(system_matrix[(0, 1)], -2.0);
         assert_eq!(system_matrix[(0, 2)], 0.0);
-        assert_eq!(system_matrix[(1, 1)], 2.0);
-        assert_eq!(system_matrix[(1, 2)], -1.0);
-        assert_eq!(system_matrix[(2, 2)], 1.0);
+        assert_eq!(system_matrix[(1, 1)], 2.5);
+        assert_eq!(system_matrix[(1, 2)], -0.5);
+        assert_eq!(system_matrix[(2, 2)], 0.5);
     }
 }

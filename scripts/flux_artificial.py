@@ -1,41 +1,6 @@
 from sympy import *
 
-
 x, y, l = symbols('x y lambda')
-
-
-def coordinate_transformation(p1, p2, p3):
-    return Matrix([
-        [1, 0, 0],
-        [p1[0], p2[0] - p1[0], p3[0] - p1[0]],
-        [p1[1], p2[1] - p1[1], p3[1] - p1[1]],
-    ])
-
-
-def base_transformation():
-    return Matrix([
-        [1, -1, -1],
-        [0, 1, 0],
-        [0, 0, 1],
-    ])
-
-
-def field_transformation(p1, p2, p3):
-    return Matrix([
-        [1, 1, 1],
-        [p1[0], p2[0], p3[0]],
-        [p1[1], p2[1], p3[1]],
-    ])
-
-
-def grad_v(p1, p2, p3):
-    return base_transformation()                    \
-        * coordinate_transformation(p1, p2, p3)     \
-        * Matrix([
-            [0, 0],
-            [1, 0],
-            [0, 1],
-        ])
 
 
 def elementaryIntegrals(n):
@@ -65,29 +30,70 @@ def elementaryIntegrals(n):
         return integrate(f3, (y, 1, 0))
 
 
-x1, y1, x2, y2, x3, y3, x4, y4 = symbols('x1,y1, x2,y2, x3,y3, x4,y4')
+def coordinate_transformation(p1, p2, p3):
+    return Matrix([
+        [1, 0, 0],
+        [p1[0], p2[0] - p1[0], p3[0] - p1[0]],
+        [p1[1], p2[1] - p1[1], p3[1] - p1[1]],
+    ])
+
+
+def base_transformation():
+    return Matrix([
+        [1, -1, -1],
+        [0, 1, 0],
+        [0, 0, 1],
+    ])
+
+
+def field_transformation(p1, p2, p3):
+    return Matrix([
+        [1, 1, 1],
+        [p1[0], p2[0], p3[0]],
+        [p1[1], p2[1], p3[1]],
+    ])
+
+
+def grad(n):
+    if n == 0:
+        return Matrix([
+            [0, 0],
+            [1, 0],
+            [0, 1],
+        ]) * Matrix([[0, -1]]).transpose()
+    if n == 1:
+        return Matrix([
+            [0, 0],
+            [1, 0],
+            [0, 1],
+        ]) * Matrix([[1, 1]]).transpose() / sqrt(2)
+    if n == 2:
+        return Matrix([
+            [0, 0],
+            [1, 0],
+            [0, 1],
+        ]) * Matrix([[-1, 0]]).transpose()
+
+
+def flux_matrix(p1, p2, p3, n):
+    return simplify(
+        base_transformation()
+        * coordinate_transformation(p1, p2, p3)
+        * grad(n)
+        * elementaryIntegrals(n).transpose()
+    )
+
+
+x1, x2, x3, x4, x5, x6 = symbols('x[0:6]')
+y1, y2, y3, y4, y5, y6 = symbols('y[0:6]')
 
 p1 = Matrix([[x1, y1]])
 p2 = Matrix([[x2, y2]])
 p3 = Matrix([[x3, y3]])
 p4 = Matrix([[x4, y4]])
+p5 = Matrix([[x5, y5]])
+p6 = Matrix([[x6, y6]])
 
-f_matrix = simplify(
-    grad_v(p2, p4, p1)
-    * Matrix([[0, -1]]).transpose()
-    * elementaryIntegrals(0).transpose()
-    * coordinate_transformation(p2, p4, p1).transpose()
-    * field_transformation(p2, p4, p1).transpose().inv()
-)
-
-pprint(f_matrix)
-
-f_matrix = simplify(
-    grad_v(p4, p2, p3)
-    * Matrix([[0, -1]]).transpose()
-    * elementaryIntegrals(0).transpose()
-    * coordinate_transformation(p4, p2, p3).transpose()
-    * field_transformation(p4, p2, p3).transpose().inv()
-)
-
-pprint(f_matrix)
+pprint(flux_matrix(p1, p2, p3, 0))
+pprint(flux_matrix(p1, p2, p3, 1))
+pprint(flux_matrix(p1, p2, p3, 2))

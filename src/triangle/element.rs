@@ -55,6 +55,17 @@ impl TriangleElementL1 {
         let e3 = Rc::new(Edge::new(&self.p3, &self.p1));
         return (e1, e2, e3);
     }
+
+    pub fn edge_index(&self, edge: &Edge) -> Result<usize, ()> {
+        if edge.p1 == self.p1 && edge.p2 == self.p2 {
+            return Ok(0);
+        } else if edge.p1 == self.p2 && edge.p2 == self.p3 {
+            return Ok(1);
+        } else if edge.p1 == self.p3 && edge.p2 == self.p1 {
+            return Ok(2);
+        }
+        return Err(());
+    }
 }
 
 #[cfg(test)]
@@ -64,7 +75,7 @@ mod hash {
     #[test]
     fn sample_1() {
         use std::collections::HashSet;
-        
+
         let p1 = Rc::new(Point::new(0.0, 0.0));
         let p2 = Rc::new(Point::new(1.0, 0.0));
         let p3 = Rc::new(Point::new(0.0, 1.0));
@@ -77,7 +88,7 @@ mod hash {
         set.insert(Rc::clone(&t1));
         set.insert(Rc::clone(&t2));
         assert_eq!(set.len(), 2);
-        
+
         set.insert(Rc::clone(&t1));
         assert_eq!(set.len(), 2);
     }
@@ -85,7 +96,7 @@ mod hash {
     #[test]
     fn sample_2() {
         use std::collections::HashSet;
-        
+
         let p1 = Rc::new(Point::new(0.0, 0.0));
         let p2 = Rc::new(Point::new(1.0, 0.0));
         let p3 = Rc::new(Point::new(0.0, 1.0));
@@ -98,7 +109,7 @@ mod hash {
         set.insert((Rc::clone(&t1), Rc::clone(&p1)));
         set.insert((Rc::clone(&t2), Rc::clone(&p1)));
         assert_eq!(set.len(), 2);
-        
+
         set.insert((Rc::clone(&t1), Rc::clone(&p1)));
         assert_eq!(set.len(), 2);
     }

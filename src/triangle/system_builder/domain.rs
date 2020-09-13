@@ -1,8 +1,6 @@
 use crate::common::edge::Edge;
 use crate::common::point::Point;
-use crate::triangle::{
-    element::TriangleElementL1, system_builder::external::boundary_constraint::BoundaryConstraint,
-};
+use crate::triangle::{boundary_constraint::BoundaryConstraint, element::TriangleElementL1};
 
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -83,9 +81,5 @@ impl Domain {
             boundary_edge: Rc::clone(edge),
             values: values_mapping,
         }))
-    }
-
-    pub fn interfaces(&self) -> Vec<(Rc<Edge>, Rc<Edge>)> {
-        return Edge::double_edges(self.adjacency.keys().cloned().collect());
     }
 } /* end - domain */

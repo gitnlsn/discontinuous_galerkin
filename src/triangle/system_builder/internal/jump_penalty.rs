@@ -1,6 +1,9 @@
 use nalgebra::DMatrix;
 
-use crate::triangle::{integrands::penalty_zero, system_builder::domain::Domain};
+use crate::triangle::{
+    integrands::interface_penalty,
+    system_builder::{assembler_utils, domain::Domain},
+};
 
 use std::rc::Rc;
 
@@ -8,99 +11,81 @@ use std::rc::Rc;
  * Fills the system matrix with mass matrix according to each element
  */
 pub fn build(system_matrix: &mut DMatrix<f64>, sigma: f64, domain: &Domain) -> Result<(), ()> {
-    let interfaces = domain.interfaces();
-    for (e1, e2) in interfaces.iter() {
-        let t_left = Rc::clone(domain.adjacency.get(e1).unwrap());
-        let t_right = Rc::clone(domain.adjacency.get(e2).unwrap());
+    for element in domain.elements.iter() {
+        let (e1, e2, e3) = element.inner_edges();
+        for edge in vec![e1, e2, e3].iter() {
+            let edge = Rc::clone(edge);
+            let edge_opp = Rc::new(edge.opposed());
+            if domain.adjacency.contains_key(&edge_opp) {
+                let t_left = Rc::clone(domain.adjacency.get(&edge).unwrap());
+                let t_right = Rc::clone(domain.adjacency.get(&edge_opp).unwrap());
 
-        let e1_opposed = t_left.opposite_vertex(e1).unwrap();
-        let e2_opposed = t_right.opposite_vertex(e2).unwrap();
+                let left_p1 = *domain
+                    .index_mapping
+                    .get(&(Rc::clone(&t_left), Rc::clone(&t_left.p1)))
+                    .unwrap();
+                let left_p2 = *domain
+                    .index_mapping
+                    .get(&(Rc::clone(&t_left), Rc::clone(&t_left.p2)))
+                    .unwrap();
+                let left_p3 = *domain
+                    .index_mapping
+                    .get(&(Rc::clone(&t_left), Rc::clone(&t_left.p3)))
+                    .unwrap();
 
-        let flux_matrix_left = penalty_zero::half_penalty(&e1.p1, &e1.p2) * sigma;
-        let flux_matrix_right = penalty_zero::half_penalty(&e2.p1, &e2.p2) * sigma;
+                let right_p1 = *domain
+                    .index_mapping
+                    .get(&(Rc::clone(&t_right), Rc::clone(&t_right.p1)))
+                    .unwrap();
+                let right_p2 = *domain
+                    .index_mapping
+                    .get(&(Rc::clone(&t_right), Rc::clone(&t_right.p2)))
+                    .unwrap();
+                let right_p3 = *domain
+                    .index_mapping
+                    .get(&(Rc::clone(&t_right), Rc::clone(&t_right.p3)))
+                    .unwrap();
 
-        let left_p1 = *domain
-            .index_mapping
-            .get(&(Rc::clone(&t_left), Rc::clone(&e1.p1)))
-            .unwrap();
-        let left_p2 = *domain
-            .index_mapping
-            .get(&(Rc::clone(&t_left), Rc::clone(&e1.p2)))
-            .unwrap();
-        let left_p3 = *domain
-            .index_mapping
-            .get(&(Rc::clone(&t_left), Rc::clone(&e1_opposed)))
-            .unwrap();
+                assembler_utils::map(
+                    /* mapping inner interface (0,1)-(1,0) */
+                    system_matrix,
+                    &(sigma
+                        * interface_penalty::bilinear_penalty(
+                            &t_left.p1,
+                            &t_left.p2,
+                            &t_left.p3,
+                            &t_left.p1,
+                            &t_left.p2,
+                            &t_left.p3,
+                            t_left.edge_index(&edge).unwrap(),
+                        ))
+                    .slice((0, 0), (3, 3))
+                    .clone_owned(),
+                    &assembler_utils::square_map(left_p1, left_p2, left_p3),
+                );
 
-        let right_p1 = *domain
-            .index_mapping
-            .get(&(Rc::clone(&t_right), Rc::clone(&e2.p1)))
-            .unwrap();
-        let right_p2 = *domain
-            .index_mapping
-            .get(&(Rc::clone(&t_right), Rc::clone(&e2.p2)))
-            .unwrap();
-        let right_p3 = *domain
-            .index_mapping
-            .get(&(Rc::clone(&t_right), Rc::clone(&e2_opposed)))
-            .unwrap();
-
-        let lo_p1: usize = 0;
-        let lo_p2: usize = 1;
-        let lo_p3: usize = 2;
-
-        /* Populating system_matrix upper left */
-        system_matrix[(left_p1, left_p1)] += flux_matrix_left[(lo_p1, lo_p1)];
-        system_matrix[(left_p1, left_p2)] += flux_matrix_left[(lo_p1, lo_p2)];
-        system_matrix[(left_p1, left_p3)] += flux_matrix_left[(lo_p1, lo_p3)];
-
-        system_matrix[(left_p2, left_p1)] += flux_matrix_left[(lo_p2, lo_p1)];
-        system_matrix[(left_p2, left_p2)] += flux_matrix_left[(lo_p2, lo_p2)];
-        system_matrix[(left_p2, left_p3)] += flux_matrix_left[(lo_p2, lo_p3)];
-
-        system_matrix[(left_p3, left_p1)] += flux_matrix_left[(lo_p3, lo_p1)];
-        system_matrix[(left_p3, left_p2)] += flux_matrix_left[(lo_p3, lo_p2)];
-        system_matrix[(left_p3, left_p3)] += flux_matrix_left[(lo_p3, lo_p3)];
-
-        /* Populating system_matrix upper right */
-        system_matrix[(left_p1, right_p1)] -= flux_matrix_left[(lo_p1, lo_p1)];
-        system_matrix[(left_p1, right_p2)] -= flux_matrix_left[(lo_p1, lo_p2)];
-        system_matrix[(left_p1, right_p3)] -= flux_matrix_left[(lo_p1, lo_p3)];
-
-        system_matrix[(left_p2, right_p1)] -= flux_matrix_left[(lo_p2, lo_p1)];
-        system_matrix[(left_p2, right_p2)] -= flux_matrix_left[(lo_p2, lo_p2)];
-        system_matrix[(left_p2, right_p3)] -= flux_matrix_left[(lo_p2, lo_p3)];
-
-        system_matrix[(left_p3, right_p1)] -= flux_matrix_left[(lo_p3, lo_p1)];
-        system_matrix[(left_p3, right_p2)] -= flux_matrix_left[(lo_p3, lo_p2)];
-        system_matrix[(left_p3, right_p3)] -= flux_matrix_left[(lo_p3, lo_p3)];
-
-        /* Populating system_matrix lower left */
-        system_matrix[(right_p1, left_p1)] -= flux_matrix_right[(lo_p1, lo_p1)];
-        system_matrix[(right_p1, left_p2)] -= flux_matrix_right[(lo_p1, lo_p2)];
-        system_matrix[(right_p1, left_p3)] -= flux_matrix_right[(lo_p1, lo_p3)];
-
-        system_matrix[(right_p2, left_p1)] -= flux_matrix_right[(lo_p2, lo_p1)];
-        system_matrix[(right_p2, left_p2)] -= flux_matrix_right[(lo_p2, lo_p2)];
-        system_matrix[(right_p2, left_p3)] -= flux_matrix_right[(lo_p2, lo_p3)];
-
-        system_matrix[(right_p3, left_p1)] -= flux_matrix_right[(lo_p3, lo_p1)];
-        system_matrix[(right_p3, left_p2)] -= flux_matrix_right[(lo_p3, lo_p2)];
-        system_matrix[(right_p3, left_p3)] -= flux_matrix_right[(lo_p3, lo_p3)];
-
-        /* Populating system_matrix lower right */
-        system_matrix[(right_p1, right_p1)] += flux_matrix_right[(lo_p1, lo_p1)];
-        system_matrix[(right_p1, right_p2)] += flux_matrix_right[(lo_p1, lo_p2)];
-        system_matrix[(right_p1, right_p3)] += flux_matrix_right[(lo_p1, lo_p3)];
-
-        system_matrix[(right_p2, right_p1)] += flux_matrix_right[(lo_p2, lo_p1)];
-        system_matrix[(right_p2, right_p2)] += flux_matrix_right[(lo_p2, lo_p2)];
-        system_matrix[(right_p2, right_p3)] += flux_matrix_right[(lo_p2, lo_p3)];
-
-        system_matrix[(right_p3, right_p1)] += flux_matrix_right[(lo_p3, lo_p1)];
-        system_matrix[(right_p3, right_p2)] += flux_matrix_right[(lo_p3, lo_p2)];
-        system_matrix[(right_p3, right_p3)] += flux_matrix_right[(lo_p3, lo_p3)];
-    }
+                assembler_utils::map(
+                    /* mapping inner interface (0,1)-(1,0) */
+                    system_matrix,
+                    &(-sigma
+                        * interface_penalty::bilinear_penalty(
+                            &t_left.p1,
+                            &t_left.p2,
+                            &t_left.p3,
+                            &t_right.p1,
+                            &t_right.p2,
+                            &t_right.p3,
+                            t_left.edge_index(&edge).unwrap(),
+                        ))
+                    .slice((0, 0), (3, 3))
+                    .clone_owned(),
+                    &assembler_utils::cross_map(
+                        left_p1, left_p2, left_p3, right_p1, right_p2, right_p3,
+                    ),
+                );
+            } /* end - if adjancency */
+        } /* end - for edge in triangle */
+    } /* end - for element in domain */
     return Ok(());
 }
 
@@ -108,18 +93,24 @@ pub fn build(system_matrix: &mut DMatrix<f64>, sigma: f64, domain: &Domain) -> R
 mod build {
     use super::*;
     use crate::common::point::Point;
-    use crate::triangle::element::TriangleElementL1;
+    use crate::triangle::{
+        element::TriangleElementL1, integrands::dirichlet_constraint,
+        system_builder::assembler_utils,
+    };
 
     #[test]
     fn sample_1() {
-        /* square into triangles */
+        /*
+            Weak imposed continuity is performed in triangle::integrand
+            This test asserts system build method will result in the same error.
+        */
         let p1 = Rc::new(Point::new(0.0, 0.0));
         let p2 = Rc::new(Point::new(1.0, 0.0));
         let p3 = Rc::new(Point::new(1.0, 1.0));
         let p4 = Rc::new(Point::new(0.0, 1.0));
 
         let t1 = Rc::new(TriangleElementL1::new(&p1, &p2, &p4));
-        let t2 = Rc::new(TriangleElementL1::new(&p4, &p2, &p3));
+        let t2 = Rc::new(TriangleElementL1::new(&p3, &p4, &p2));
 
         let mut domain = Domain::new_empty();
         domain.insert_element(&t1);
@@ -127,43 +118,80 @@ mod build {
 
         let mut system_matrix: DMatrix<f64> = DMatrix::<f64>::zeros(6, 6);
 
-        build(&mut system_matrix, 3.0, &domain);
+        assembler_utils::map(
+            /* mapping (0,0)-(1,0) */
+            &mut system_matrix,
+            &dirichlet_constraint::dirichlet_bilinear_penalty(&p1, &p2, &p4, 0)
+                .slice((0, 0), (3, 3))
+                .clone_owned(),
+            &assembler_utils::square_map(0, 1, 2),
+        );
+        assembler_utils::map(
+            /* mapping (0,1)-(0,0) */
+            &mut system_matrix,
+            &dirichlet_constraint::dirichlet_bilinear_penalty(&p1, &p2, &p4, 2)
+                .slice((0, 0), (3, 3))
+                .clone_owned(),
+            &assembler_utils::square_map(0, 1, 2),
+        );
+        assembler_utils::map(
+            /* mapping (1,1)-(0,1) */
+            &mut system_matrix,
+            &dirichlet_constraint::dirichlet_bilinear_penalty(&p3, &p4, &p2, 0)
+                .slice((0, 0), (3, 3))
+                .clone_owned(),
+            &assembler_utils::square_map(3, 4, 5),
+        );
+        assembler_utils::map(
+            /* mapping (1,0)-(1,1) */
+            &mut system_matrix,
+            &dirichlet_constraint::dirichlet_bilinear_penalty(&p3, &p4, &p2, 2)
+                .slice((0, 0), (3, 3))
+                .clone_owned(),
+            &assembler_utils::square_map(3, 4, 5),
+        );
 
-        println!("{}", system_matrix);
-    }
+        build(&mut system_matrix, 1.0, &domain);
 
-    #[test]
-    fn sample_2() {
-        /* 6 triangle hexagon */
-        let p1 = Rc::new(Point::new(2.0, 1.0));
-        let p2 = Rc::new(Point::new(3.0, 2.0));
-        let p3 = Rc::new(Point::new(3.0, 4.0));
-        let p4 = Rc::new(Point::new(2.0, 5.0));
-        let p5 = Rc::new(Point::new(1.0, 4.0));
-        let p6 = Rc::new(Point::new(1.0, 2.0));
-        let p7 = Rc::new(Point::new(2.0, 3.0));
+        let mut extern_matrix = DMatrix::<f64>::zeros(6, 1);
+        assembler_utils::map(
+            /* mapping inner interface (0,1)-(1,0) */
+            &mut extern_matrix,
+            &dirichlet_constraint::dirichlet_linear_penalty(&p1, &p2, &p4, 0.0, 0.0, 2.0, 0)
+                .slice((0, 0), (3, 1))
+                .clone_owned(),
+            &assembler_utils::linear_map(0, 1, 2),
+        );
+        assembler_utils::map(
+            /* mapping inner interface (0,1)-(1,0) */
+            &mut extern_matrix,
+            &dirichlet_constraint::dirichlet_linear_penalty(&p1, &p2, &p4, 0.0, 0.0, 2.0, 2)
+                .slice((0, 0), (3, 1))
+                .clone_owned(),
+            &assembler_utils::linear_map(0, 1, 2),
+        );
+        assembler_utils::map(
+            /* mapping inner interface (0,1)-(1,0) */
+            &mut extern_matrix,
+            &dirichlet_constraint::dirichlet_linear_penalty(&p3, &p4, &p2, 0.0, 2.0, 0.0, 0)
+                .slice((0, 0), (3, 1))
+                .clone_owned(),
+            &assembler_utils::linear_map(3, 4, 5),
+        );
+        assembler_utils::map(
+            /* mapping inner interface (0,1)-(1,0) */
+            &mut extern_matrix,
+            &dirichlet_constraint::dirichlet_linear_penalty(&p3, &p4, &p2, 0.0, 2.0, 0.0, 2)
+                .slice((0, 0), (3, 1))
+                .clone_owned(),
+            &assembler_utils::linear_map(3, 4, 5),
+        );
 
-        let t1 = Rc::new(TriangleElementL1::new(&p1, &p2, &p7));
-        let t2 = Rc::new(TriangleElementL1::new(&p2, &p3, &p7));
-        let t3 = Rc::new(TriangleElementL1::new(&p3, &p4, &p7));
-        let t4 = Rc::new(TriangleElementL1::new(&p4, &p5, &p7));
-        let t5 = Rc::new(TriangleElementL1::new(&p5, &p6, &p7));
-        let t6 = Rc::new(TriangleElementL1::new(&p6, &p1, &p7));
+        let solution = system_matrix.try_inverse().unwrap() * extern_matrix;
+        let expected = DMatrix::<f64>::from_row_slice(6, 1, &vec![0.0, 0.0, 2.0, 0.0, 2.0, 0.0]);
 
-        let mut domain = Domain::new_empty();
-        domain.insert_element(&t1);
-        domain.insert_element(&t2);
-        domain.insert_element(&t3);
-        domain.insert_element(&t4);
-        domain.insert_element(&t5);
-        domain.insert_element(&t6);
+        let error = ((&solution - &expected).transpose() * (&solution - &expected))[(0, 0)].sqrt();
 
-        let variables_length = domain.elements.len() * 3;
-        let mut system_matrix: DMatrix<f64> =
-            DMatrix::<f64>::zeros(variables_length, variables_length);
-
-        build(&mut system_matrix, 3.0, &domain);
-
-        println!("{}", system_matrix);
+        assert_eq!(error, 0.375);
     }
 }

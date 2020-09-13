@@ -1,14 +1,7 @@
 from sympy import *
 
-x, y, l = symbols('x y lambda')
-
-
-def coordinate_transformation(p1, p2, p3):
-    return Matrix([
-        [1, 0, 0],
-        [p1[0], p2[0] - p1[0], p3[0] - p1[0]],
-        [p1[1], p2[1] - p1[1], p3[1] - p1[1]],
-    ])
+x1, x2, x3 = symbols('x[0:3]')
+y1, y2, y3 = symbols('y[0:3]')
 
 
 def base_transformation():
@@ -16,6 +9,14 @@ def base_transformation():
         [1, -1, -1],
         [0, 1, 0],
         [0, 0, 1],
+    ])
+
+
+def coordinate_transformation(p1, p2, p3):
+    return Matrix([
+        [1, 0, 0],
+        [p1[0], p2[0] - p1[0], p3[0] - p1[0]],
+        [p1[1], p2[1] - p1[1], p3[1] - p1[1]],
     ])
 
 
@@ -28,6 +29,8 @@ def field_transformation(p1, p2, p3):
 
 
 def elementaryIntegrals(n):
+    x, y, l = symbols('x y lambda')
+
     f1 = Matrix([
         [1],
         [x],
@@ -54,24 +57,39 @@ def elementaryIntegrals(n):
         return integrate(f3 * f3.transpose(), (y, 1, 0))
 
 
-x1, y1, x2, y2, x3, y3, x4, y4 = symbols('x1,y1, x2,y2, x3,y3, x4,y4')
-
 p1 = Matrix([[x1, y1]])
 p2 = Matrix([[x2, y2]])
 p3 = Matrix([[x3, y3]])
-p4 = Matrix([[x4, y4]])
 
 
-def build(p1, p2,p3, n):
+def boundary_matrix(p1, p2, p3, n):
     return simplify(
         base_transformation()
-        * coordinate_transformation(p1, p2, p4)
-        * elementaryIntegrals(n)
+        * coordinate_transformation(p1, p2, p3)
+        * (
+            elementaryIntegrals(n)
+        )
         * coordinate_transformation(p1, p2, p3).transpose()
         * field_transformation(p1, p2, p3).transpose().inv()
     )
 
+pprint(
+    boundary_matrix(p1, p2, p3, 0)
+    # .subs(x1, 0).subs(y1, 0)
+    # .subs(x2, 1).subs(y2, 0)
+    # .subs(x3, 0).subs(y3, 1)
+)
 
-pprint(build(p1,p2,p3, 0))
-pprint(build(p1,p2,p3, 1))
-pprint(build(p1,p2,p3, 2))
+pprint(
+    boundary_matrix(p1, p2, p3, 1)
+    # .subs(x1, 0).subs(y1, 0)
+    # .subs(x2, 1).subs(y2, 0)
+    # .subs(x3, 0).subs(y3, 1)
+)
+
+pprint(
+    boundary_matrix(p1, p2, p3, 2)
+    # .subs(x1, 0).subs(y1, 0)
+    # .subs(x2, 1).subs(y2, 0)
+    # .subs(x3, 0).subs(y3, 1)
+)

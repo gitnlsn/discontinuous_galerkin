@@ -54,45 +54,46 @@ def field_transformation(p1, p2, p3):
     ])
 
 
-def grad(p1, p2, p3):
-    return Matrix([
-        [0, 0],
-        [1, 0],
-        [0, 1],
-    ]).transpose()                                          \
-        * coordinate_transformation(p1, p2, p3).transpose() \
-        * field_transformation(p1, p2, p3).transpose().inv()
+def grad(n):
+    if n == 0:
+        return Matrix([[0, -1]]) * Matrix([
+            [0, 0],
+            [1, 0],
+            [0, 1],
+        ]).transpose()
+    if n == 1:
+        return Matrix([[1, 1]]) / sqrt(2) * Matrix([
+            [0, 0],
+            [1, 0],
+            [0, 1],
+        ]).transpose()
+    if n == 2:
+        return Matrix([[-1, 0]]) * Matrix([
+            [0, 0],
+            [1, 0],
+            [0, 1],
+        ]).transpose()
 
 
-x1, y1, x2, y2, x3, y3, x4, y4 = symbols('x1,y1, x2,y2, x3,y3, x4,y4')
+def flux_matrix(p1, p2, p3, n):
+    return simplify(
+        base_transformation()
+        * coordinate_transformation(p1, p2, p3)
+        * elementaryIntegrals(n)
+        * grad(n)
+    )
+
+
+x1, x2, x3, x4, x5, x6 = symbols('x[0:6]')
+y1, y2, y3, y4, y5, y6 = symbols('y[0:6]')
 
 p1 = Matrix([[x1, y1]])
 p2 = Matrix([[x2, y2]])
 p3 = Matrix([[x3, y3]])
 p4 = Matrix([[x4, y4]])
+p5 = Matrix([[x5, y5]])
+p6 = Matrix([[x6, y6]])
 
-f_matrix = simplify(
-    base_transformation()
-    * coordinate_transformation(p2, p4, p1)
-    * elementaryIntegrals(0)
-    * Matrix([[0, -1]])
-    * grad(p2, p4, p1)
-)
-
-f_matrix_opp = simplify(
-    base_transformation()
-    * coordinate_transformation(p4, p2, p3)
-    * elementaryIntegrals(0)
-    * Matrix([[0, -1]])
-    * grad(p2, p4, p1)
-)
-
-pprint(f_matrix)
-pprint(f_matrix_opp)
-pprint(
-    f_matrix
-    .subs(x1, 0).subs(y1, 0)
-    .subs(x2, 1).subs(y2, 0)
-    .subs(x3, 1).subs(y3, 1)
-    .subs(x4, 0).subs(y4, 1)
-)
+pprint(flux_matrix(p1, p2, p3, 0))
+pprint(flux_matrix(p1, p2, p3, 1))
+pprint(flux_matrix(p1, p2, p3, 2))

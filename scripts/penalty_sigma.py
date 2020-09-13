@@ -1,6 +1,5 @@
 from sympy import *
 
-
 x, y, l = symbols('x y lambda')
 
 
@@ -55,19 +54,27 @@ def elementaryIntegrals(n):
         return integrate(f3 * f3.transpose(), (y, 1, 0))
 
 
-x1, y1, x2, y2, x3, y3, x4, y4 = symbols('x1,y1, x2,y2, x3,y3, x4,y4')
+x1, x2, x3, x4, x5, x6 = symbols('x[0:6]')
+y1, y2, y3, y4, y5, y6 = symbols('y[0:6]')
 
 p1 = Matrix([[x1, y1]])
 p2 = Matrix([[x2, y2]])
 p3 = Matrix([[x3, y3]])
 p4 = Matrix([[x4, y4]])
+p5 = Matrix([[x5, y5]])
+p6 = Matrix([[x6, y6]])
 
-f_matrix = simplify(
-    base_transformation()
-    * coordinate_transformation(p1, p2, p4)
-    * elementaryIntegrals(0)
-    * coordinate_transformation(p1, p2, p4).transpose()
-    * field_transformation(p1, p2, p4).transpose().inv()
-)
 
-pprint(f_matrix)
+def boundary_matrix(p1, p2, p3, p4, p5, p6, n):
+    return simplify(
+        base_transformation()
+        * coordinate_transformation(p1, p2, p3)
+        * elementaryIntegrals(n)
+        # * coordinate_transformation(p1, p2, p3).transpose()
+        # * field_transformation(p4, p5, p6).transpose().inv()
+    )
+
+
+pprint(boundary_matrix(p1, p2, p3, p1, p2, p3, 0))
+pprint(boundary_matrix(p1, p2, p3, p1, p2, p3, 1))
+pprint(boundary_matrix(p1, p2, p3, p1, p2, p3, 2))
