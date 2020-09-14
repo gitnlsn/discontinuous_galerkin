@@ -56,3 +56,83 @@ pub fn neumann(
     };
     return foo * Matrix3x1::new(u1, u2, u3);
 }
+
+#[cfg(test)]
+mod neumann {
+    use super::*;
+
+    #[test]
+    fn sample_1() {
+        let p1 = Point::new(0.0, 0.0);
+        let p2 = Point::new(1.0, 0.0);
+        let p3 = Point::new(1.0, 1.0);
+
+        let u1 = 1.0;
+        let u2 = 1.0;
+        let u3 = 1.0;
+
+        let n1 = neumann(&p1, &p2, &p3, u1, u2, u3, 0);
+        let n2 = neumann(&p1, &p2, &p3, u1, u2, u3, 1);
+        let n3 = neumann(&p1, &p2, &p3, u1, u2, u3, 2);
+        println!("{}", n1);
+        println!("{}", n2);
+        println!("{}", n3);
+
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n1[(0, 0)],
+            0.5,
+            epsilon = 1.0E-14f64
+        ));
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n1[(1, 0)],
+            0.5,
+            epsilon = 1.0E-14f64
+        ));
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n1[(2, 0)],
+            0.0,
+            epsilon = 1.0E-14f64
+        ));
+
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n2[(0, 0)],
+            -0.7071067811865476,
+            epsilon = 1.0E-14f64
+        ));
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n2[(1, 0)],
+            1.4142135623730951,
+            epsilon = 1.0E-14f64
+        ));
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n2[(2, 0)],
+            0.7071067811865476,
+            epsilon = 1.0E-14f64
+        ));
+
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n3[(0, 0)],
+            -0.00000000000000005551115123125783,
+            epsilon = 1.0E-14f64
+        ));
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n3[(1, 0)],
+            -0.5,
+            epsilon = 1.0E-14f64
+        ));
+        assert!(float_cmp::approx_eq!(
+            f64,
+            n3[(2, 0)],
+            -0.5,
+            epsilon = 1.0E-14f64
+        ));
+    }
+}

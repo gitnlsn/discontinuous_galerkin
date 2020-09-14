@@ -103,7 +103,7 @@ mod system_build {
         assert!(err3 < err2);
         assert!(err4 < err3);
         assert!(err5 < err4);
-    }
+    } /* end - hexagon */
 
     #[test]
     fn sample_2() {
@@ -191,5 +191,54 @@ mod system_build {
         assert!(err2 < err1);
         assert!(err3 < err2);
         assert!(err4 < err3);
+    }
+
+
+    #[test]
+    fn sample_4() {
+        /* square into triangles */
+        let p1 = Rc::new(Point::new(0.0, 0.0));
+        let p2 = Rc::new(Point::new(1.0, 0.0));
+        let p3 = Rc::new(Point::new(1.0, 1.0));
+        let p4 = Rc::new(Point::new(0.0, 1.0));
+
+        let e1 = Rc::new(Edge::new(&p1, &p2));
+        let e2 = Rc::new(Edge::new(&p2, &p3));
+        let e3 = Rc::new(Edge::new(&p3, &p4));
+        let e4 = Rc::new(Edge::new(&p4, &p1));
+
+        let t1 = Rc::new(TriangleElementL1::new(&p1, &p2, &p4));
+        let t2 = Rc::new(TriangleElementL1::new(&p4, &p2, &p3));
+
+        let mut domain = Domain::new_empty();
+        domain.insert_element(&t1);
+        domain.insert_element(&t2);
+
+        domain.insert_dirichlet_constraint(&e1, vec![0.0, 0.0]);
+        domain.insert_dirichlet_constraint(&e3, vec![1.0, 1.0]);
+        domain.insert_neumann_constraint(&e2, vec![0.0, 0.0]);
+        domain.insert_neumann_constraint(&e4, vec![0.0, 0.0]);
+
+        fn solve(sigma: f64, domain: &Domain) -> f64 {
+            let (system_matrix, extern_matrix) = build(sigma, &domain);
+            let inverse = system_matrix.try_inverse().unwrap();
+            let answer = inverse * extern_matrix;
+
+            let expected =
+                DMatrix::<f64>::from_row_slice(6, 1, &vec![0.0, 0.0, 1.0, 1.0, 0.0, 1.0]);
+            let error = ((&answer - &expected).transpose() * (&answer - &expected))[(0, 0)].sqrt();
+            println!("{} {}", answer, error);
+            return error;
+        }
+        let err1 = solve(10.0, &domain);
+        let err2 = solve(100.0, &domain);
+        let err3 = solve(1000.0, &domain);
+        let err4 = solve(10000.0, &domain);
+        let err5 = solve(100000.0, &domain);
+
+        assert!(err2 < err1);
+        assert!(err3 < err2);
+        assert!(err4 < err3);
+        assert!(err5 < err4);
     }
 }
